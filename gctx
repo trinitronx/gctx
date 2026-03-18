@@ -1,0 +1,264 @@
+#!/usr/bin/env bash
+#
+# gctx(1) is a utility to manage and switch between gcloud named configurations.
+
+# Copyright 2026 James Cuzella <james.cuzella@lyraphase.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[[ -n $DEBUG ]] && set -x
+
+set -eou pipefail
+IFS=$'\n\t'
+
+SELF_CMD="$0"
+
+GCTX="${XDG_CACHE_HOME:-$HOME/.cache/gctx}/gctx"
+
+usage() {
+  local SELF
+  SELF="gctx"
+
+  cat <<EOF
+USAGE:
+  $SELF                       : list the named configurations
+  $SELF <NAME>                : switch to named configuration <NAME>
+  $SELF -                     : switch to the previous named configuration
+  $SELF -c, --current         : show the current named configuration name
+  $SELF <NEW_NAME>=<NAME>     : rename named configuration <NAME> to <NEW_NAME>
+  $SELF <NEW_NAME>=.          : rename current named configuration to <NEW_NAME>
+  $SELF -d <NAME> [<NAME...>] : delete named configuration <NAME> ('.' for current config)
+  $SELF -u, --unset           : unset the current named configuration
+
+  $SELF -h,--help             : show this message
+EOF
+}
+
+exit_err() {
+   echo >&2 "${1}"
+   exit 1
+}
+
+current_config() {
+  local config_dir
+  config_dir="${CLOUDSDK_CONFIG_DIR:-${HOME}/.config/gcloud}"
+  cat "${config_dir}/active_config" 2>/dev/null
+}
+
+get_configs() {
+  $GCLOUD config configurations list --format='value(name)' | sort -n
+}
+
+list_configs() {
+  set -u pipefail
+  local cur config_list
+  cur="$(current_config)" || exit_err "error getting current named configuration"
+  config_list=$(get_configs) || exit_err "error getting named configuration list"
+
+  local yellow darkbg normal
+  yellow=$(tput setaf 3 || true)
+  darkbg=$(tput setab 0 || true)
+  normal=$(tput sgr0 || true)
+
+  local cur_config_fg cur_config_bg
+  cur_config_fg=${GCTX_CURRENT_FGCOLOR:-$yellow}
+  cur_config_bg=${GCTX_CURRENT_BGCOLOR:-$darkbg}
+
+  for c in $config_list; do
+  if [[ -n "${_GCTX_FORCE_COLOR:-}" || \
+       -t 1 && -z "${NO_COLOR:-}" ]]; then
+    # colored output mode
+    if [[ "${c}" = "${cur}" ]]; then
+      echo "${cur_config_bg}${cur_config_fg}${c}${normal}"
+    else
+      echo "${c}"
+    fi
+  else
+    echo "${c}"
+  fi
+  done
+}
+
+read_config() {
+  if [[ -f "${GCTX}" ]]; then
+    cat "${GCTX}"
+  fi
+}
+
+save_config() {
+  local saved
+  local gctx_cache_dir
+  gctx_cache_dir="$(dirname "${GCTX}")"
+  [ -d "$gctx_cache_dir" ] || mkdir -p "$gctx_cache_dir"
+  saved="$(read_config)"
+
+  if [[ "${saved}" != "${1}" ]]; then
+    printf %s "${1}" > "${GCTX}"
+  fi
+}
+
+switch_config() {
+  $GCLOUD config configurations activate "${1}"
+}
+
+choose_config_interactive() {
+  local choice
+  choice="$(_GCTX_FORCE_COLOR=1 \
+    FZF_DEFAULT_COMMAND="${SELF_CMD}" \
+    fzf --ansi --no-preview || true)"
+  if [[ -z "${choice}" ]]; then
+    echo 2>&1 "error: you did not choose any of the options"
+    exit 1
+  else
+    set_config "${choice}"
+  fi
+}
+
+set_config() {
+  local prev
+  prev="$(current_config)" || exit_err "error getting current named configuration"
+
+  switch_config "${1}"
+
+  if [[ "${prev}" != "${1}" ]]; then
+    save_config "${prev}"
+  fi
+}
+
+swap_config() {
+  local config
+  config="$(read_config)"
+  if [[ -z "${config}" ]]; then
+    echo "error: No previous named configuration found." >&2
+    exit 1
+  fi
+  set_config "${config}"
+}
+
+config_exists() {
+  grep -q ^"${1}"\$ <($GCLOUD config configurations list --format='value(name)')
+}
+
+rename_config() {
+  local old_name="${1}"
+  local new_name="${2}"
+  local config_dir="${CLOUDSDK_CONFIG_DIR:-${HOME}/.config/gcloud}/configurations"
+
+  if [[ "${old_name}" == "." ]]; then
+    old_name="$(current_config)"
+  fi
+
+  if ! config_exists "${old_name}"; then
+    echo "error: Named configuration \"${old_name}\" not found, can't rename it." >&2
+    exit 1
+  fi
+
+  if config_exists "${new_name}"; then
+    echo "Named configuration \"${new_name}\" exists, deleting..." >&2
+    rm -f "${config_dir}/config_${new_name}" 1>/dev/null 2>&1
+  fi
+
+  mv "${config_dir}/config_${old_name}" "${config_dir}/config_${new_name}"
+}
+
+delete_configs() {
+  for i in "${@}"; do
+    delete_config "${i}"
+  done
+}
+
+delete_config() {
+  local config
+  config="${1}"
+  if [[ "${config}" == "." ]]; then
+    config="$(current_config)" || exit_err "error getting current named configuration"
+  fi
+  echo "Deleting named configuration \"${config}\"..." >&2
+  $GCLOUD config configurations delete "${config}"
+}
+
+unset_config() {
+  local active_config_file
+  active_config_file="${CLOUDSDK_CONFIG_DIR:-${HOME}/.config/gcloud}/active_config"
+  echo "Unsetting current named configuration." >&2
+  echo "" > "${active_config_file}"
+}
+
+main() {
+  if [[ -z "${GCLOUD:-}" ]]; then
+    if hash gcloud 2>/dev/null; then
+      GCLOUD=gcloud
+    elif hash gcloud.exe 2>/dev/null; then
+      GCLOUD=gcloud.exe
+    else
+      echo >&2 "gcloud is not installed"
+      exit 1
+    fi
+  fi
+  if [[ -z "${JQ:-}" ]]; then
+    if hash jq 2>/dev/null; then
+      JQ=jq
+    elif hash jq.exe 2>/dev/null; then
+      JQ=jq.exe
+    else
+      echo >&2 "jq is not installed"
+      exit 1
+    fi
+  fi
+
+
+  if [[ "$#" -eq 0 ]]; then
+    if [[ -t 1 &&  -z "${GCTX_IGNORE_FZF:-}" && "$(type fzf &>/dev/null; echo $?)" -eq 0 ]]; then
+      choose_config_interactive
+    else
+      list_configs
+    fi
+  elif [[ "${1}" == "-d" ]]; then
+    if [[ "$#" -lt 2 ]]; then
+      echo "error: missing managed configuration NAME" >&2
+      usage
+      exit 1
+    fi
+    delete_configs "${@:2}"
+  elif [[ "$#" -gt 1 ]]; then
+    echo "error: too many arguments" >&2
+    usage
+    exit 1
+  elif [[ "$#" -eq 1 ]]; then
+    if [[ "${1}" == "-" ]]; then
+      swap_config
+    elif [[ "${1}" == '-c' || "${1}" == '--current' ]]; then
+      # we don't call current_config here for two reasons:
+      # - it does not fail when current named configuration is not set
+      # - it does not return a trailing newline
+      $GCLOUD config configurations list --format=json | $JQ -r '.[] | select(.is_active) | .name'
+    elif [[ "${1}" == '-u' || "${1}" == '--unset' ]]; then
+      unset_config
+    elif [[ "${1}" == '-h' || "${1}" == '--help' ]]; then
+      usage
+    elif [[ "${1}" =~ ^-(.*) ]]; then
+      echo "error: unrecognized flag \"${1}\"" >&2
+      usage
+      exit 1
+    elif [[ "${1}" =~ (.+)=(.+) ]]; then
+      rename_config "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}"
+    else
+      set_config "${1}"
+    fi
+  else
+    usage
+    exit 1
+  fi
+}
+
+main "$@"
