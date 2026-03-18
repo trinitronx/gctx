@@ -6,7 +6,12 @@ Faster way to switch between named configurations in gcloud. Inspired by [kubect
 
 ## What is it?
 
-`gctx` is a command-line tool that helps you switch between [gcloud named configurations](https://cloud.google.com/sdk/docs/configurations) quickly. If you manage multiple GCP projects or accounts, `gctx` makes it easy to jump between them — with interactive fuzzy search via `fzf` or direct command-line usage.
+`gctx` is a command-line tool that helps you switch between
+[gcloud named configurations][gcloud-configs] quickly. If you manage multiple
+GCP projects or accounts, `gctx` makes it easy to jump between them — with
+interactive fuzzy search via `fzf` or direct command-line usage.
+
+[gcloud-configs]: https://cloud.google.com/sdk/docs/configurations
 
 ## Features
 
@@ -16,7 +21,10 @@ Faster way to switch between named configurations in gcloud. Inspired by [kubect
 - **Rename** configurations
 - **Delete** one or more configurations
 - **Unset** the current active configuration
-- **Interactive mode** with [fzf](https://github.com/junegunn/fzf) when run without arguments in a terminal
+- **Interactive mode** with [fzf][fzf] when run
+  without arguments in a terminal
+
+[fzf]: https://github.com/junegunn/fzf
 
 ## Dependencies
 
@@ -38,7 +46,7 @@ curl -Lo ~/.local/bin/gctx https://raw.githubusercontent.com/trinitronx/gctx/mai
 chmod +x ~/.local/bin/gctx
 ```
 
-### From source
+### From source (for packagers)
 
 ```bash
 git clone https://github.com/trinitronx/gctx.git
@@ -48,7 +56,7 @@ install -m 0755 gctx /usr/local/bin/gctx
 
 ## Usage
 
-```
+```text
 USAGE:
   gctx                       : list the named configurations
   gctx <NAME>                : switch to named configuration <NAME>
@@ -56,7 +64,8 @@ USAGE:
   gctx -c, --current         : show the current named configuration name
   gctx <NEW_NAME>=<NAME>     : rename named configuration <NAME> to <NEW_NAME>
   gctx <NEW_NAME>=.          : rename current named configuration to <NEW_NAME>
-  gctx -d <NAME> [<NAME...>] : delete named configuration <NAME> ('.' for current config)
+  gctx -d <NAME> [<NAME...>] : delete named configuration <NAME>
+                                ('.' for current config)
   gctx -u, --unset           : unset the current named configuration
 
   gctx -h,--help             : show this message
@@ -95,17 +104,23 @@ $ gctx -u
 
 ## Environment Variables
 
+<!-- markdownlint-disable MD013 -->
+
 | Variable | Description |
 |----------|-------------|
 | `GCLOUD` | Override the `gcloud` binary path |
 | `JQ` | Override the `jq` binary path |
-| `CLOUDSDK_CONFIG_DIR` | Override the gcloud config directory (default: `~/.config/gcloud`) |
-| `GCTX_CURRENT_FGCOLOR` | Custom foreground color for the active config in list output |
-| `GCTX_CURRENT_BGCOLOR` | Custom background color for the active config in list output |
-| `GCTX_IGNORE_FZF` | Set to skip interactive fzf mode even when available |
-| `NO_COLOR` | Disable colored output (respects [no-color.org](https://no-color.org)) |
+| `CLOUDSDK_CONFIG_DIR` | Override gcloud config dir (default: `~/.config/gcloud`) |
+| `GCTX_CURRENT_FGCOLOR` | Custom foreground color for active config in list output |
+| `GCTX_CURRENT_BGCOLOR` | Custom background color for active config in list output |
+| `GCTX_IGNORE_FZF` | Skip interactive fzf mode even when available |
+| `NO_COLOR` | Disable colored output (respects [no-color.org][no-color]) |
 | `_GCTX_FORCE_COLOR` | Force enable colored output |
 | `DEBUG` | Enable debug output (`set -x`) |
+
+<!-- markdownlint-enable MD013 -->
+
+[no-color]: https://no-color.org
 
 ## License
 
