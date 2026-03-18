@@ -46,7 +46,7 @@ curl -Lo ~/.local/bin/gctx https://raw.githubusercontent.com/trinitronx/gctx/mai
 chmod +x ~/.local/bin/gctx
 ```
 
-### `chezmoi`
+### [`chezmoi`][chezmoi] dotfiles manager
 
 <!-- markdownlint-disable MD033 -->
 
