@@ -46,6 +46,63 @@ curl -Lo ~/.local/bin/gctx https://raw.githubusercontent.com/trinitronx/gctx/mai
 chmod +x ~/.local/bin/gctx
 ```
 
+### `chezmoi`
+
+<!-- markdownlint-disable MD033 -->
+
+Add the following snippet to `.chezmoiexternal.$FORMAT{,.tmpl}` to install via
+`chezmoi`'s git-repo:
+
+<details><summary><code>.chezmoiexternal.yaml.tmpl</code></summary>
+<p>
+
+Note: Optionally wrap in the `{{ if -}} ... {{ end -}}` block to omit installing
+the symlink if `gcloud` or `jq` are not installed.
+
+```gotmpl
+{{ if lookPath "gcloud" | and ( lookPath "jq" ) -}}
+".local/share/gctx":
+  type: "git-repo"
+  url: "https://github.com/trinitronx/gctx"
+  refreshPeriod: "168h"
+  pull:
+    args: ["--ff-only"]
+
+{{ end -}}
+```
+
+</p>
+</details>
+
+Add the following to symlink `gctx` script into `~/.local/bin/gctx`:
+
+<details><summary><code>private_dot_local/bin/symlink_gctx</code></summary>
+<p>
+
+```text
+../share/gctx/gctx
+```
+
+</p>
+</details>
+
+Optional: Add the following to `.chezmoiignore` in order to omit installing the
+symlink if `gcloud` or `jq` are not installed.
+
+<details><summary><code>.chezmoiignore</code></summary>
+<p>
+
+```gotmpl
+{{ if not (lookPath "gcloud") | or (not (lookPath "jq")) -}}
+.local/bin/gctx
+{{ end -}}
+```
+
+</p>
+</details>
+
+<!-- markdownlint-enable MD033 -->
+
 ### From source (for packagers)
 
 ```bash
