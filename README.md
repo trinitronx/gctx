@@ -103,6 +103,8 @@ symlink if `gcloud` or `jq` are not installed.
 
 <!-- markdownlint-enable MD033 -->
 
+[chezmoi]: https://www.chezmoi.io/
+
 ### From source (for packagers)
 
 ```bash
