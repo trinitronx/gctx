@@ -104,6 +104,7 @@ $ gctx -u
 | `GCTX_CURRENT_BGCOLOR` | Custom background color for the active config in list output |
 | `GCTX_IGNORE_FZF` | Set to skip interactive fzf mode even when available |
 | `NO_COLOR` | Disable colored output (respects [no-color.org](https://no-color.org)) |
+| `_GCTX_FORCE_COLOR` | Force enable colored output |
 | `DEBUG` | Enable debug output (`set -x`) |
 
 ## License
