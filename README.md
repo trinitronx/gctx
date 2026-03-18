@@ -51,7 +51,7 @@ chmod +x ~/.local/bin/gctx
 <!-- markdownlint-disable MD033 -->
 
 Add the following snippet to `.chezmoiexternal.$FORMAT{,.tmpl}` to install via
-`chezmoi`'s git-repo:
+`chezmoi`'s git-repo external handler:
 
 <details><summary><code>.chezmoiexternal.yaml.tmpl</code></summary>
 <p>
