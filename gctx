@@ -30,6 +30,8 @@ usage() {
   SELF="gctx"
 
   cat <<EOF
+Switch between gcloud named configurations.
+
 USAGE:
   $SELF                       : list the named configurations
   $SELF <NAME>                : switch to named configuration <NAME>
